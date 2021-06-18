@@ -137,6 +137,22 @@ app.get('/comments/:quoteId', (req, res) => {
             KeyType: 'RANGE',
           },
         ],
+        GlobalSecondaryIndexes: [
+          {
+            IndexName: 'quote_id',
+            ProvisionedThroughput: {
+              ReadCapacityUnits: 1,
+              WriteCapacityUnits: 1,
+            },
+            Projection: { ProjectionType: 'ALL' },
+            KeySchema: [
+              {
+                AttributeName: 'quoteId',
+                KeyType: 'HASH',
+              },
+            ],
+          },
+        ],
         ProvisionedThroughput: {
           ReadCapacityUnits: 1,
           WriteCapacityUnits: 1,
@@ -155,15 +171,14 @@ app.get('/comments/:quoteId', (req, res) => {
       const quoteId = req.params.quoteId;
       const params = {
         TableName: 'Comments',
-        ScanFilter: {
-          quoteId: {
-            ComparisonOperator: 'CONTAINS',
-            AttributeValueList: [`${quoteId}`],
-          },
-        },
+        IndexName: 'quote_id',
+        KeyConditionExpression: '#qid = :q_id',
+        ExpressionAttributeNames: { '#qid': 'quoteId' },
+        ExpressionAttributeValues: { ':q_id': quoteId },
+        ScanIndexForward: true,
       };
 
-      docClient.scan(params, (err, data) => {
+      docClient.query(params, (err, data) => {
         if (err) {
           console.log(err);
         } else {
